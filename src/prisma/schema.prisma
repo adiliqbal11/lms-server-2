@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  USER
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum QuestionType {
+  MCQ
+  SHORT
+  FILLINTHEBLANK
+  MULTIFILLINTHEBLANK
+  MULTIPLSHORT
+  SEQUENCE
+  MULTIPLSHORTV2
+  MULTIPLLONG
+  MULTIPLETRUEFALSE
+  LONG
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ExportTypes {
+  PRACTICE
+  PAPER
+}
+
+enum ExportedQuestionStatus {
+  NORMAL
+  DELETED
+}
+
+model User {
+  id        String             @id @default(uuid())
+  email     String?            @unique
+  password  String?
+  name      String?
+  role      UserRole?          @default(TEACHER)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  reserved  ExportedQuestion[]
+}
+
+model School {
+  id        String   @id @default(uuid())
+  type      String?  @unique
+  grades    Grade[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Grade {
+  id        String    @id @default(uuid())
+  school    School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId  String?
+  grade     String?
+  subjects  Subject[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([schoolId, grade])
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  grade     Grade?   @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  gradeId   String?
+  subject   String?
+  topics    Topic[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gradeId, subject])
+}
+
+model Topic {
+  id        String     @id @default(uuid())
+  subject   Subject?   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId String?
+  topic     String?
+  subTopics SubTopic[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([subjectId, topic])
+}
+
+model SubTopic {
+  id        String     @id @default(uuid())
+  topic     Topic?     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId   String?
+  subTopic  String?
+  questions Question[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([topicId, subTopic])
+}
+
+model Question {
+  id                String             @id @default(uuid())
+  subTopic          SubTopic?          @relation(fields: [subTopicId], references: [id], onDelete: Cascade)
+  subTopicId        String?
+  question          String?
+  type              QuestionType
+  marks             Int
+  difficultyLevel   DifficultyLevel
+  answers           Answer[]
+  reservedQuestions ExportedQuestion[]
+  questionImage     String             @default("")
+  additional        String             @default("")
+  mcqImage          Boolean            @default(false)
+  answerCount       Int                @default(0)
+  importId          String             @unique
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  // @@unique([subTopicId, question])
+}
+
+model Answer {
+  id          String       @id @default(uuid())
+  question    Question?    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId  String?
+  // answer     String?      @unique
+  answer      String?
+  type        QuestionType
+  importId    String       @default("")
+  sequenceNo  Int          @default(0)
+  additional  String       @default("")
+  isCorrect   Boolean
+  answerImage String       @default("")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ExportedQuestion {
+  id          String                 @id @default(uuid())
+  name        String                 @default("")
+  user        User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question?              @relation(fields: [questionsId], references: [id], onDelete: Cascade)
+  userId      String?
+  questionsId String?
+  exportType  ExportTypes
+  status      ExportedQuestionStatus @default(NORMAL)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+}
